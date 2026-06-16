@@ -1,5 +1,10 @@
 # Chemistry-SDS-Citation-Generator
-This is a python project to generate chemical safety data sheet in ACS format for your chemistry related papers!
+Generate ACS-style (and RIS) citations for chemical Safety Data Sheets, for your chemistry lab reports and papers.
+
+There are two ways to use it:
+
+* **Web app (`webapp/`)** — recommended. A zero-install, browser-based tool: drop an SDS PDF (or paste a link) and get an ACS citation plus an `.ris` file for Zotero / EndNote / Mendeley. It parses entirely in your browser (nothing is uploaded), generalises across many suppliers via the GHS "Section 1" structure, lets you edit every field, and shows which suppliers are supported. See [`webapp/README.md`](webapp/README.md).
+* **Python script (`1.0/`)** — the original command-line tool for batch-processing a folder of Sigma-Aldrich and Thermo Fisher / Alfa Aesar SDS PDFs into `export.docx` and `export.ris`. Setup instructions below.
 
 ## Disclaimers
 The example safety data sheets come from Sigma-Aldrich and Alfa Aesar.

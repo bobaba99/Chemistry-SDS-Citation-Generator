@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SDS Citation Generator — ACS &amp; RIS</title>
+  <meta name="description" content="Generate ACS-style and RIS citations from chemical Safety Data Sheets. Runs entirely in your browser — your files never leave your computer.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>SDS Citation Generator</h1>
+    <p class="tagline">Turn a chemical Safety Data Sheet into an <strong>ACS citation</strong> and an <strong>RIS file</strong> for Zotero / EndNote / Mendeley.</p>
+    <p class="privacy">🔒 Runs entirely in your browser. Your PDFs never leave your computer — nothing is uploaded.</p>
+  </header>
+
+  <main>
+    <section class="input-card">
+      <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Drop SDS PDFs or click to choose files">
+        <p><strong>Drop SDS PDFs here</strong> or <span class="link">choose files</span></p>
+        <p class="hint">You can add several at once.</p>
+        <input id="fileInput" type="file" accept="application/pdf,.pdf" multiple hidden>
+      </div>
+
+      <div class="or">— or paste a link —</div>
+
+      <form id="linkForm" class="link-row">
+        <input id="linkInput" type="url" placeholder="https://…/some-chemical-sds.pdf" aria-label="SDS PDF link">
+        <button type="submit">Add from link</button>
+      </form>
+      <p class="hint link-note">Tip: paste a <em>direct link to the PDF</em>. Some suppliers block cross-site downloads — if a link fails, just download the PDF and drop it above.</p>
+
+      <div id="status" class="status" role="status" aria-live="polite"></div>
+    </section>
+
+    <section id="results" class="results" hidden>
+      <div class="results-toolbar">
+        <h2>Citations <span id="count" class="count"></span></h2>
+        <div class="actions">
+          <button id="copyAcs" type="button">Copy ACS list</button>
+          <button id="downloadRis" type="button">Download .ris</button>
+          <button id="downloadDoc" type="button">Download Word (.doc)</button>
+          <button id="clearAll" type="button" class="ghost">Clear</button>
+        </div>
+      </div>
+      <ol id="cards" class="cards"></ol>
+    </section>
+
+    <section class="coverage">
+      <h2>Supplier coverage</h2>
+      <p class="hint">Field extraction follows the GHS "Section 1: Identification" structure, so many suppliers work even when not individually listed. <strong>Full</strong> = verified against real SDS PDFs. <strong>Beta</strong> = recognised &amp; parsed, not yet verified for that vendor (double-check the result).</p>
+      <div id="coverageLists" class="coverage-lists"></div>
+      <p class="request">
+        Don't see your supplier, or got a wrong result?
+        <a id="requestSupplier" href="#" target="_blank" rel="noopener">Request a supplier ▸</a>
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Free for academic use • Open source • Citations are a starting point — always verify against your SDS and your course's style guide.</p>
+  </footer>
+
+  <!-- pdf.js (text extraction) loaded inside app.js as an ES module -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>
