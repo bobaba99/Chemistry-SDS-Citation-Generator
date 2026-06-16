@@ -1,199 +1,186 @@
 #!/usr/bin/env python3
-import PyPDF2
+"""Generate SDS citations from safety data sheet PDFs.
+
+Every ``*.pdf`` in the current directory has its first page parsed into a
+structured record. The records are written out in two formats:
+
+* ``export.docx`` -- a numbered, ACS-style reference list, and
+* ``export.ris``  -- an RIS file that imports into Zotero, EndNote,
+  Mendeley and other reference managers.
+
+Both Sigma-Aldrich and Thermo Fisher / Alfa Aesar safety data sheets are
+supported; the supplier is detected automatically from the document text.
+
+ACS citation format::
+
+    chemical name (italic); CAS RN; catalogue/product number, revision;
+    supplier: city, state, revision date. URL (accessed date)
+"""
 import os
 import re
-import docx
-import sys
-import codecs
 import calendar
-from docx import Document
 from datetime import datetime
-from os import path
 
-# format
-# chemical name (italics); CAS RN; MSDS Number, revision number; Supplier: City, State, revision date. URL (accessed date)
+from PyPDF2 import PdfReader
+from docx import Document
 
-def sigmaaldrich(path):
-    # extract first page info
-    pdfFileObj = open(path, 'rb')
-    pdfReader = PyPDF2.PdfFileReader(pdfFileObj)
-    pageHandle = pdfReader.getPage(0)
-    # print(pageHandle.extractText())
+DOCX_EXPORT = 'export.docx'
+RIS_EXPORT = 'export.ris'
 
-    # output to .txt file
-    output = open('temp.txt', 'w')
-    output.write(pageHandle.extractText())
-    output.close()
-    # --------------------------------------------- parse
-    readTemp = open('temp.txt', 'r')
-    writeFile = open('parse.txt', 'w')
 
-    parsed = readTemp.read().replace('\n', '')
-    readTemp.close()
-    writeFile.write(parsed)
+def first_page_text(pdf_path):
+    """Return the extracted text of the first page of *pdf_path*."""
+    reader = PdfReader(pdf_path)
+    return reader.pages[0].extract_text() or ''
 
-    readTemp.close()
-    writeFile.close()
-    # --------------------------------------------- name
-    readName = open('parse.txt', 'r')
-    rName = re.findall(r'name : ([\s\S]*)  Product', readName.read())
-    name = rName[0]
-    readName.close()
-    writeFile.close()
-    # --------------------------------------------- cas
-    readCAS = open('parse.txt', 'r')
-    rCAS = re.findall(r'CAS-No. : (\d*\-\d*\-\d*)', readCAS.read())
-    CAS = rCAS[0] 
-    readCAS.close()
-    writeFile.close()
-    # --------------------------------------------- msds
-    readMSDS = open('parse.txt', 'r')
-    rMSDS = re.findall(r'Product Number : (\S*)', readMSDS.read())
-    msds = rMSDS[0] 
-    readMSDS.close()
-    writeFile.close()
-    # --------------------------------------------- revision num
-    readRevNum = open('parse.txt', 'r')
-    rRevNum = re.findall(r'Version (\d\.\d)', readRevNum.read())
-    revNum = rRevNum[0] 
-    readRevNum.close()
-    writeFile.close()
-    # --------------------------------------------- revision date
-    readRevDate = open('parse.txt', 'r')
-    rRevDate = re.findall(r'Revision Date (\d*\.\d*\.\d*)', readRevDate.read())
-    revDate = rRevDate[0] 
-    mNum = revDate[3:5]
-    month = calendar.month_name[int(mNum)]
-    rDate = month + ' ' + revDate[0:2] + ', ' + revDate[6:10]
-    readRevDate.close()
-    writeFile.close()
-    # --------------------------------------------- city and state
-    readCity = open('parse.txt', 'r')
-    rCity = re.findall(r'([A-Z]* [A-Z]{2})  \w', readCity.read())
-    temp = rCity[0] 
-    lower = temp.lower()
-    i = len(temp)
-    state = temp[i-2:i]
-    city = lower.capitalize()[0:i-3] + ', ' + state
-    readCity.close()
-    writeFile.close()
-    # --------------------------------------------- access date
-    aDate = '(accessed ' + datetime.today().strftime('%Y-%m-%d') + ')'
-    # --------------------------------------------- url
-    # https://www.sigmaaldrich.com/MSDS/MSDS/DisplayMSDSPage.do?country=CA&language=en&productNumber=239607&brand=SIAL&PageToGoToURL=%2Fsafety-center.html
-    url = 'https://www.sigmaaldrich.com/MSDS/MSDS/DisplayMSDSPage.do?country=CA&language=en&productNumber=' + msds + '&brand=SIAL&PageToGoToURL=%2Fsafety-center.html'
 
-    if os.path.isfile("./export.docx") == True:
-        doc = Document('export.docx')
-        para = doc.add_paragraph()
-        para.style = 'List Number'
-        para.add_run(name).italic = True
-        para.add_run('; CAS RN: ' + CAS + '; ')
-        para.add_run(msds)
-        para.add_run(', ' + 'rev. ' + revNum)
-        para.add_run('; Sigma-Aldrich: ' + city)
-        para.add_run(', ' + rDate + '. ' + url + ' ' + aDate)
-        doc.save('export.docx')
-    else:
-        doc = Document()
-        para = doc.add_paragraph(style = 'List Number')
-        para.add_run(name).italic = True
-        para.add_run('; CAS RN: ' + CAS + '; ')
-        para.add_run(msds)
-        para.add_run(', ' + 'rev. ' + revNum)
-        para.add_run('; Sigma-Aldrich: ' + city)
-        para.add_run(', ' + rDate + '. ' + url + ' ' + aDate)
-        doc.save('export.docx')
+def search(pattern, text, field, flags=0):
+    """Return the first capture group of *pattern*, or raise a clear error."""
+    match = re.search(pattern, text, flags)
+    if not match:
+        raise ValueError('could not find %s' % field)
+    return match.group(1).strip()
 
-    pdfFileObj.close()
 
-def alfaaesar(path):
-    # extract first page info
-    pdfFileObj = open(path, 'rb')
-    pdfReader = PyPDF2.PdfFileReader(pdfFileObj)
-    pageHandle = pdfReader.getPage(0)
+def accessed_today():
+    return datetime.today().strftime('%Y-%m-%d')
 
-    # output to .txt file
-    output = open('temp.txt', 'w')
-    output.write(pageHandle.extractText())
-    output.close()
-    # --------------------------------------------- name
-    readName = open('temp.txt', 'r')
-    rName = re.findall(r'Name([\s\S]*)Cat No', readName.read())
-    name = rName[0]
-    readName.close()
-    # --------------------------------------------- cas
-    readCAS = open('temp.txt', 'r')
-    rCAS = re.findall(r'CAS-No(\d*-\d*-\d*)Synonyms', readCAS.read())
-    CAS = rCAS[0]
-    readCAS.close()
-    # --------------------------------------------- msds
-    readMSDS = open('temp.txt', 'r')
-    rMSDS = re.findall(r'Cat No. :(\S*)CAS', readMSDS.read())
-    msds = rMSDS[0]
-    readMSDS.close()
-    # --------------------------------------------- revision num
-    readRevNum = open('temp.txt', 'r')
-    rRevNum = re.findall(r'Revision Number. (\d)', readRevNum.read())
-    revNum = rRevNum[0] 
-    readRevNum.close()
-    # --------------------------------------------- revision date
-    readRevDate = open('temp.txt', 'r')
-    rRevDate = re.findall(r'Revision Date  (\S*)Revision', readRevDate.read())
-    if len(rRevDate[0]) > 12:
-        date = datetime.strptime(rRevDate[0], '%d-%B-%Y').strftime('%B %d, %Y')
-    else:
-        date = datetime.strptime(rRevDate[0], '%d-%b-%Y').strftime('%B %d, %Y')
-    readRevDate.close()
-    # --------------------------------------------- access date
-    aDate = '(accessed ' + datetime.today().strftime('%Y-%m-%d') + ')'
-    # --------------------------------------------- url
-    # https://www.alfa.com/en/msds/?language=CE&subformat=AGHS&sku=A12804
-    url = 'https://www.alfa.com/en/msds/?language=CE&subformat=AGHS&sku=' + msds
 
-    if os.path.isfile("./export.docx") == True:
-        doc = Document('export.docx')
-        para = doc.add_paragraph(style = 'List Number')
-        para.add_run(name).italic = True
-        para.add_run('; CAS RN: ' + CAS + '; ')
-        para.add_run(msds)
-        para.add_run(', ' + 'rev. ' + revNum)
-        para.add_run('; Alfa Aesar, Thermo Fisher: Ward Hill, MA, ')
-        para.add_run(date + '. ' + url + ' ' + aDate)
-        doc.save('export.docx')
-    else:
-        doc = Document()
-        para = doc.add_paragraph()
-        para.add_run(name).italic = True
-        para.add_run('; CAS RN: ' + CAS + '; ')
-        para.add_run(msds)
-        para.add_run(', ' + 'rev. ' + revNum)
-        para.add_run('; Alfa Aesar, Thermo Fisher: Ward Hill, MA, ')
-        para.add_run(', ' + date + '. ' + url + ' ' + aDate)
-        doc.save('export.docx')
+def sigma_city(text):
+    """Extract ``City, ST`` from the Sigma-Aldrich supplier address block."""
+    block = text.split('Company', 1)[-1].split('Telephone', 1)[0]
+    match = re.search(r"([A-Z][A-Z .'-]+?)\s+([A-Z]{2})\s{2,}\w", block)
+    if not match:
+        raise ValueError('could not find supplier city/state')
+    return '%s, %s' % (match.group(1).strip().title(), match.group(2))
 
-    pdfFileObj.close()
 
-def cleanup():
-    switch = os.path.exists('parse.txt') and os.path.exists('temp.txt')
-    if switch == True:
-        os.remove("parse.txt")
-        os.remove("temp.txt")
-
-# main
-if __name__ == '__main__':
-    entries = os.listdir('./')
-    list = []
-    for entry in entries:
-        matched = re.match(r"^.*\.pdf", entry)
-        if bool(matched) == 1:
-            list.append(entry)
-            list.sort()
-    for pdf in list:
-        path = './' + pdf
-        print(path + '\n')
+def parse_thermo_date(raw):
+    for fmt in ('%d-%B-%Y', '%d-%b-%Y'):
         try:
-            alfaaesar(path)
-        except:
-            sigmaaldrich(path)
-cleanup()
+            return datetime.strptime(raw, fmt)
+        except ValueError:
+            continue
+    raise ValueError('unrecognised revision date: %s' % raw)
+
+
+def sigmaaldrich(text):
+    """Parse a Sigma-Aldrich SDS into a citation record."""
+    date_match = re.search(r'Revision Date\s+(\d{2})\.(\d{2})\.(\d{4})', text)
+    if not date_match:
+        raise ValueError('could not find revision date')
+    day, month, year = int(date_match.group(1)), int(date_match.group(2)), date_match.group(3)
+    number = search(r'Product Number\s*:?\s*(\S+)', text, 'product number')
+
+    return {
+        'name': search(r'Product name\s*:\s*(.+)', text, 'product name'),
+        'cas': search(r'CAS-No\.?\s*:?\s*(\d+-\d+-\d+)', text, 'CAS number'),
+        'number': number,
+        'version': search(r'Version\s+(\d+\.\d+)', text, 'version'),
+        'supplier': 'Sigma-Aldrich',
+        'publisher': 'Sigma-Aldrich',
+        'place': sigma_city(text),
+        'date_display': '%s %d, %s' % (calendar.month_name[month], day, year),
+        'date_iso': '%s/%02d/%02d' % (year, month, day),
+        'year': year,
+        'url': ('https://www.sigmaaldrich.com/MSDS/MSDS/DisplayMSDSPage.do'
+                '?country=CA&language=en&productNumber=' + number
+                + '&brand=SIAL&PageToGoToURL=%2Fsafety-center.html'),
+    }
+
+
+def thermofisher(text):
+    """Parse a Thermo Fisher / Alfa Aesar SDS into a citation record."""
+    raw_date = search(r'Revision Date\s+(\d{1,2}-[A-Za-z]+-\d{4})', text, 'revision date')
+    date = parse_thermo_date(raw_date)
+    number = search(r'Cat No\.?\s*:?\s*(\S+)', text, 'catalogue number')
+
+    return {
+        'name': search(r'Product Name\s+(.+)', text, 'product name'),
+        'cas': search(r'CAS-No\.?\s*:?\s*(\d+-\d+-\d+)', text, 'CAS number'),
+        'number': number,
+        'version': search(r'Revision Number\.?\s*:?\s*(\d+)', text, 'revision number'),
+        'supplier': 'Alfa Aesar, Thermo Fisher',
+        'publisher': 'Thermo Fisher Scientific',
+        'place': 'Ward Hill, MA',
+        'date_display': date.strftime('%B %d, %Y'),
+        'date_iso': date.strftime('%Y/%m/%d'),
+        'year': date.year,
+        'url': 'https://www.alfa.com/en/msds/?language=CE&subformat=AGHS&sku=' + number,
+    }
+
+
+def parse_pdf(pdf_path):
+    """Detect the supplier from the document text and return its record."""
+    text = first_page_text(pdf_path)
+    if 'Cat No' in text:
+        return thermofisher(text)
+    if 'Product Number' in text:
+        return sigmaaldrich(text)
+    raise ValueError('unrecognised SDS format '
+                     '(not Sigma-Aldrich or Thermo Fisher)')
+
+
+def add_citation(doc, record):
+    """Append one numbered ACS citation to *doc* (chemical name in italics)."""
+    para = doc.add_paragraph(style='List Number')
+    para.add_run(record['name']).italic = True
+    para.add_run(
+        '; CAS RN: %(cas)s; %(number)s, rev. %(version)s; '
+        '%(supplier)s: %(place)s, %(date_display)s. %(url)s' % record
+        + ' (accessed %s)' % accessed_today()
+    )
+
+
+def ris_entry(record):
+    """Render one record as an RIS reference (report type)."""
+    fields = [
+        ('TY', 'RPRT'),
+        ('TI', '%s: Safety Data Sheet' % record['name']),
+        ('AU', record['publisher']),
+        ('PB', record['publisher']),
+        ('CY', record['place']),
+        ('PY', str(record['year'])),
+        ('DA', record['date_iso']),
+        ('ET', 'rev. %s' % record['version']),
+        ('M1', record['number']),
+        ('UR', record['url']),
+        ('KW', 'CAS RN %s' % record['cas']),
+        ('N1', 'CAS Registry Number: %s. Accessed %s.' % (record['cas'], accessed_today())),
+        ('ER', ''),
+    ]
+    return '\r\n'.join('%s  - %s' % (tag, value) for tag, value in fields) + '\r\n'
+
+
+def main():
+    pdfs = sorted(f for f in os.listdir('.') if f.lower().endswith('.pdf'))
+    if not pdfs:
+        print('No PDF files found in the current directory.')
+        return
+
+    records = []
+    for pdf in pdfs:
+        try:
+            records.append(parse_pdf(pdf))
+            print('Added citation for %s' % pdf)
+        except Exception as exc:
+            print('Skipped %s: %s' % (pdf, exc))
+
+    if not records:
+        print('No citations were generated.')
+        return
+
+    doc = Document(DOCX_EXPORT) if os.path.isfile(DOCX_EXPORT) else Document()
+    for record in records:
+        add_citation(doc, record)
+    doc.save(DOCX_EXPORT)
+
+    with open(RIS_EXPORT, 'w', encoding='utf-8', newline='') as ris:
+        ris.write('\r\n'.join(ris_entry(record) for record in records))
+
+    print('Wrote %d citation(s) to %s and %s'
+          % (len(records), DOCX_EXPORT, RIS_EXPORT))
+
+
+if __name__ == '__main__':
+    main()
