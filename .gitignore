@@ -1,0 +1,16 @@
+# Generated output
+export.docx
+export.ris
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Scratch files written by older versions of the script
+temp.txt
+parse.txt
+
+# macOS
+.DS_Store
