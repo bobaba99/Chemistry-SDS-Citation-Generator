@@ -1,6 +1,7 @@
 // Browser glue: PDF text extraction (pdf.js) + parser.js + editable UI + exports.
 import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.min.mjs';
 import { parseSDS, formatACS, formatRIS, parseDate, todayISO, SUPPLIERS } from './parser.js';
+import { lookupByCAS } from './enrich.js';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.worker.min.mjs';
@@ -143,7 +144,9 @@ function render() {
         </div>` : ''}
       <div class="card-actions">
         <button type="button" class="small" data-copy>Copy this citation</button>
+        <button type="button" class="small ghost" data-verify ${rec.cas ? '' : 'disabled'}>Verify name (PubChem)</button>
         <button type="button" class="small ghost" data-remove>Remove</button>
+        <span class="verify-note" data-note></span>
       </div>`;
 
     li.querySelector('[data-preview]').innerHTML = acsPreviewHtml(rec);
@@ -166,9 +169,69 @@ function render() {
       if (i >= 0) records.splice(i, 1);
       render();
     });
+    const verifyBtn = li.querySelector('[data-verify]');
+    if (verifyBtn) verifyBtn.addEventListener('click', () => verifyCard(rec, li));
 
     cards.appendChild(li);
   });
+}
+
+/* ------------------------------------------------------- PubChem validation */
+
+// Look up the record's CAS on PubChem and either fill an empty name or offer
+// the canonical name as a one-click suggestion. Fails soft.
+async function verifyCard(rec, li) {
+  const note = li.querySelector('[data-note]');
+  const btn = li.querySelector('[data-verify]');
+  note.textContent = 'Checking PubChem…';
+  note.className = 'verify-note';
+  btn.disabled = true;
+  try {
+    const hit = await lookupByCAS(rec.cas);
+    if (!hit || !hit.name) {
+      note.textContent = `No PubChem match for CAS ${rec.cas}.`;
+      return;
+    }
+    const current = (rec.name || '').trim().toLowerCase();
+    if (!current) {
+      applyName(rec, li, hit.name);
+      note.textContent = `Filled name from PubChem (CID ${hit.cid}).`;
+      note.className = 'verify-note ok';
+    } else if (current === hit.name.toLowerCase()) {
+      note.textContent = `✓ Matches PubChem (CID ${hit.cid}).`;
+      note.className = 'verify-note ok';
+    } else {
+      note.innerHTML = `PubChem: <strong>${escapeHtml(hit.name)}</strong> — `;
+      const use = document.createElement('button');
+      use.type = 'button'; use.className = 'small'; use.textContent = 'use';
+      use.addEventListener('click', () => {
+        applyName(rec, li, hit.name);
+        note.textContent = `Updated to PubChem name (CID ${hit.cid}).`;
+        note.className = 'verify-note ok';
+      });
+      note.appendChild(use);
+    }
+  } catch (e) {
+    note.textContent = `PubChem lookup unavailable (${e.message}).`;
+    note.className = 'verify-note err';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function applyName(rec, li, name) {
+  rec.name = name;
+  const input = li.querySelector('input[data-field="name"]');
+  if (input) input.value = name;
+  li.querySelector('.title').textContent = name;
+  li.querySelector('[data-preview]').innerHTML = acsPreviewHtml(rec);
+}
+
+async function verifyAll() {
+  const cards = [...document.querySelectorAll('.card')];
+  for (let i = 0; i < records.length; i++) {
+    if (records[i].cas) await verifyCard(records[i], cards[i]);
+  }
 }
 
 /* ------------------------------------------------------------------ exports */
@@ -259,6 +322,7 @@ function init() {
     if (url) handleLink(url);
   });
 
+  $('#verifyAll').addEventListener('click', verifyAll);
   $('#copyAcs').addEventListener('click', () => copyText(acsList()));
   $('#downloadRis').addEventListener('click', () =>
     download('sds-citations.ris', risFile(), 'application/x-research-info-systems'));

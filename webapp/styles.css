@@ -135,7 +135,11 @@ button.small { padding: 5px 9px; font-size: 0.85rem; }
   border-radius: 8px; padding: 8px 12px; font-size: 0.85rem;
 }
 .warnings ul { margin: 4px 0 0; padding-left: 18px; }
-.card-actions { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+.card-actions { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.verify-note { font-size: 0.82rem; color: var(--muted); }
+.verify-note.ok { color: var(--full); }
+.verify-note.err { color: #b42318; }
+button:disabled { opacity: 0.55; cursor: default; }
 
 .coverage h2 { margin-top: 0; }
 .coverage-lists { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px; }
