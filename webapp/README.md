@@ -14,6 +14,10 @@ and Mendeley.
   is usually a one-line registry entry, not a new parser.
 * **Editable.** Every parsed field can be corrected before export; extraction
   is a starting point, not the last word.
+* **Optional name check.** "Verify names (PubChem)" looks each CAS number up
+  against the free [PubChem](https://pubchem.ncbi.nlm.nih.gov/) API to fill a
+  missing name or flag a mismatch. It is opt-in and fails soft if PubChem is
+  unreachable.
 
 ## Run locally
 
