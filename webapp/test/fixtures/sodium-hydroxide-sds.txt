@@ -1,0 +1,39 @@
+Version 6.2
+SAFETY DATA SHEET Revision Date 09.01.2020
+Print Date 20.11.2020
+SECTION 1: Identification of the substance/mixture and of the company/undertaking
+1.1 Product identifiers
+Product name :
+Sodium hydroxide
+Product Number : S8045
+Brand : SIGALD
+Index-No. : 011-002-00-6
+CAS-No. : 1310-73-2
+1.2 Relevant identified uses of the substance or mixture and uses advised against
+Identified uses : Laboratory chemicals, Synthesis of substances
+1.3 Details of the supplier of the safety data sheet
+Company : SIGMA-ALDRICH CANADA CO.
+2149 WINSTON PARK DRIVE
+OAKVILLE ON L6H 6J8
+CANADA
+Telephone : +1 905 829-9500
+Fax : +1 905 829-9292
+1.4 Emergency telephone number
+Emergency Phone # : 800-424-9300 CHEMTREC (USA)
++1-703-527-3887 CHEMTREC
+(International)
+24 Hours/day; 7 Days/week
+SECTION 2: Hazards identification
+2.1 Classification of the substance or mixture
+GHS Classification in accordance with Hazardous Products Regulations (HPR)
+(SOR/2015-17)
+Corrosive to metals (Category 1), H290
+Skin corrosion (Category 1A), H314
+Eye irritation (Category 2A), H319
+Short-term (acute) aquatic hazard (Category 3), H402
+For the full text of the H-Statements mentioned in this Section, see Section 16.
+2.2 GHS Label elements, including precautionary statements
+Pictogram
+SIGALD - S8045 Page 1 of 10
+The life science business of Merck KGaA, Darmstadt, Germany
+operates as MilliporeSigma in the US and Canada

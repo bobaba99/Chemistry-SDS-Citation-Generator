@@ -13,8 +13,8 @@ supported; the supplier is detected automatically from the document text.
 
 ACS citation format::
 
-    chemical name (italic); CAS RN; catalogue/product number, revision;
-    supplier: city, state, revision date. URL (accessed date)
+    chemical name (italic) (CAS RN: x); catalogue/product number, Rev. v;
+    supplier: city, state, revision date. URL (accessed date).
 """
 import os
 import re
@@ -46,13 +46,20 @@ def accessed_today():
     return datetime.today().strftime('%Y-%m-%d')
 
 
-def sigma_city(text):
-    """Extract ``City, ST`` from the Sigma-Aldrich supplier address block."""
-    block = text.split('Company', 1)[-1].split('Telephone', 1)[0]
-    match = re.search(r"([A-Z][A-Z .'-]+?)\s+([A-Z]{2})\s{2,}\w", block)
-    if not match:
-        raise ValueError('could not find supplier city/state')
-    return '%s, %s' % (match.group(1).strip().title(), match.group(2))
+def sigma_brand(text):
+    """Return the Sigma-Aldrich brand code used in the current SDS URL path."""
+    t = re.sub(r'\s*-\s*', '-', text.upper())
+    if 'SIGALD' in t:
+        return 'sigald'
+    if 'SUPELCO' in t:
+        return 'supelco'
+    if 'SIGMA-ALDRICH' in t or 'SIAL' in t:
+        return 'sial'
+    if 'ALDRICH' in t:
+        return 'aldrich'
+    if 'SIGMA' in t:
+        return 'sigma'
+    return 'sial'
 
 
 def parse_thermo_date(raw):
@@ -79,13 +86,12 @@ def sigmaaldrich(text):
         'version': search(r'Version\s+(\d+\.\d+)', text, 'version'),
         'supplier': 'Sigma-Aldrich',
         'publisher': 'Sigma-Aldrich',
-        'place': sigma_city(text),
+        'place': 'St. Louis, MO',
         'date_display': '%s %d, %s' % (calendar.month_name[month], day, year),
         'date_iso': '%s/%02d/%02d' % (year, month, day),
         'year': year,
-        'url': ('https://www.sigmaaldrich.com/MSDS/MSDS/DisplayMSDSPage.do'
-                '?country=CA&language=en&productNumber=' + number
-                + '&brand=SIAL&PageToGoToURL=%2Fsafety-center.html'),
+        'url': 'https://www.sigmaaldrich.com/US/en/sds/%s/%s'
+               % (sigma_brand(text), number.lower()),
     }
 
 
@@ -100,13 +106,14 @@ def thermofisher(text):
         'cas': search(r'CAS-No\.?\s*:?\s*(\d+-\d+-\d+)', text, 'CAS number'),
         'number': number,
         'version': search(r'Revision Number\.?\s*:?\s*(\d+)', text, 'revision number'),
-        'supplier': 'Alfa Aesar, Thermo Fisher',
+        'supplier': 'Alfa Aesar (Thermo Fisher Scientific)',
         'publisher': 'Thermo Fisher Scientific',
         'place': 'Ward Hill, MA',
         'date_display': date.strftime('%B %d, %Y'),
         'date_iso': date.strftime('%Y/%m/%d'),
         'year': date.year,
-        'url': 'https://www.alfa.com/en/msds/?language=CE&subformat=AGHS&sku=' + number,
+        'url': ('https://www.fishersci.com/store/msds?partNumber=' + number
+                + '&productDescription=&countryCode=US&language=en'),
     }
 
 
@@ -126,9 +133,9 @@ def add_citation(doc, record):
     para = doc.add_paragraph(style='List Number')
     para.add_run(record['name']).italic = True
     para.add_run(
-        '; CAS RN: %(cas)s; %(number)s, rev. %(version)s; '
+        ' (CAS RN: %(cas)s); %(number)s, Rev. %(version)s; '
         '%(supplier)s: %(place)s, %(date_display)s. %(url)s' % record
-        + ' (accessed %s)' % accessed_today()
+        + ' (accessed %s).' % accessed_today()
     )
 
 
@@ -142,7 +149,7 @@ def ris_entry(record):
         ('CY', record['place']),
         ('PY', str(record['year'])),
         ('DA', record['date_iso']),
-        ('ET', 'rev. %s' % record['version']),
+        ('ET', 'Rev. %s' % record['version']),
         ('M1', record['number']),
         ('UR', record['url']),
         ('KW', 'CAS RN %s' % record['cas']),
